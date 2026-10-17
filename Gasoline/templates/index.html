@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FuelOps Admin — Station Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d0f12;
+  --bg2: #14171c;
+  --bg3: #1c2028;
+  --bg4: #242830;
+  --border: #2e3340;
+  --border2: #3a4050;
+  --text: #e8eaf0;
+  --text2: #9098b0;
+  --text3: #5c6478;
+  --accent: #f5a623;
+  --accent2: #ff6b35;
+  --green: #2ec97e;
+  --red: #e84545;
+  --blue: #4a9eff;
+  --purple: #9b7fe8;
+  --yellow: #f5e642;
+  --radius: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; overflow:hidden; }
+.mono { font-family:'IBM Plex Mono',monospace; }
+
+/* Sidebar */
+.sidebar {
+  width: 240px; min-height:100vh; background:var(--bg2);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  position:fixed; top:0; left:0; bottom:0; z-index:100;
+  transition: width 0.3s;
+}
+.sidebar-logo {
+  padding:24px 20px 20px;
+  border-bottom:1px solid var(--border);
+}
+.logo-icon { font-size:22px; margin-bottom:6px; }
+.logo-name { font-weight:700; font-size:15px; letter-spacing:0.5px; color:var(--accent); }
+.logo-sub { font-size:11px; color:var(--text3); font-family:'IBM Plex Mono',monospace; }
+.sidebar-nav { flex:1; padding:12px 0; overflow-y:auto; }
+.nav-section { padding:8px 20px 4px; font-size:10px; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; font-weight:600; }
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 20px; cursor:pointer; transition:all 0.15s;
+  color:var(--text2); font-size:13.5px; font-weight:500;
+  border-left:3px solid transparent;
+}
+.nav-item:hover { background:var(--bg3); color:var(--text); }
+.nav-item.active { background:var(--bg3); color:var(--accent); border-left-color:var(--accent); }
+.nav-item .icon { font-size:16px; width:20px; text-align:center; }
+.nav-badge { margin-left:auto; background:var(--red); color:#fff; font-size:10px; padding:2px 6px; border-radius:10px; font-weight:700; animation: pulse-badge 1.5s infinite; }
+@keyframes pulse-badge {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(232,69,69,0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(232,69,69,0); }
+}
+
+.sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); }
+.admin-pill { display:flex; align-items:center; gap:10px; }
+.admin-avatar { width:32px;height:32px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex;align-items:center;justify-content:center; font-weight:700; font-size:13px; }
+.admin-info { flex:1; }
+.admin-name { font-size:13px; font-weight:600; }
+.admin-role { font-size:11px; color:var(--accent); }
+
+/* Main Content */
+.main {
+  margin-left:240px; flex:1; display:flex; flex-direction:column;
+  min-height:100vh; overflow-y:auto; max-height:100vh;
+}
+.topbar {
+  background:var(--bg2); border-bottom:1px solid var(--border);
+  padding:0 28px; height:60px; display:flex; align-items:center;
+  justify-content:space-between; position:sticky; top:0; z-index:50;
+}
+.page-title { font-size:17px; font-weight:700; }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+.topbar-btn {
+  background:var(--bg3); border:1px solid var(--border);
+  color:var(--text2); padding:7px 14px; border-radius:var(--radius);
+  cursor:pointer; font-size:13px; transition:all 0.15s; display:flex; align-items:center; gap:6px;
+}
+.topbar-btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn-primary {
+  background:var(--accent); color:#000; font-weight:700;
+  border:none; padding:8px 16px; border-radius:var(--radius);
+  cursor:pointer; font-size:13px; transition:all 0.15s; display:flex; align-items:center; gap:6px;
+}
+.btn-primary:hover { background:#ffb733; }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-danger:hover { background:#ff6060; }
+.btn-success { background:var(--green); color:#000; }
+.live-dot { width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(46,201,126,0.4)} 50%{opacity:0.8;box-shadow:0 0 0 6px rgba(46,201,126,0)} }
+
+/* Content Sections */
+.content { padding:24px 28px; }
+.section { display:none; }
+.section.active { display:block; }
+
+/* Stat Cards */
+.stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+.stat-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px;
+  position:relative; overflow:hidden;
+  transition:border-color 0.2s;
+}
+.stat-card:hover { border-color:var(--border2); }
+.stat-card::after {
+  content:''; position:absolute; bottom:0;left:0;right:0; height:3px;
+}
+.stat-card.s-orange::after { background:var(--accent); }
+.stat-card.s-green::after { background:var(--green); }
+.stat-card.s-red::after { background:var(--red); }
+.stat-card.s-blue::after { background:var(--blue); }
+.stat-label { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:1px; font-weight:600; margin-bottom:8px; }
+.stat-val { font-size:26px; font-weight:700; font-family:'IBM Plex Mono',monospace; }
+.stat-sub { font-size:12px; color:var(--text2); margin-top:6px; display:flex; align-items:center; gap:4px; }
+.stat-up { color:var(--green); }
+.stat-down { color:var(--red); }
+
+/* Charts Row */
+.charts-row { display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:24px; }
+.chart-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px;
+}
+.card-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.card-sub { font-size:11px; color:var(--text3); margin-bottom:16px; }
+.chart-wrap { position:relative; height:200px; }
+
+/* Tables */
+.table-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden; margin-bottom:24px;
+}
+.table-header {
+  padding:16px 20px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:10px;
+}
+.table-controls { display:flex; align-items:center; gap:8px; }
+.search-input {
+  background:var(--bg3); border:1px solid var(--border);
+  color:var(--text); padding:7px 12px; border-radius:var(--radius);
+  font-size:13px; outline:none; width:200px; transition:border-color 0.2s;
+}
+.search-input:focus { border-color:var(--accent); }
+.select-input {
+  background:var(--bg3); border:1px solid var(--border);
+  color:var(--text2); padding:7px 10px; border-radius:var(--radius);
+  font-size:13px; outline:none; cursor:pointer;
+}
+table { width:100%; border-collapse:collapse; }
+thead tr { border-bottom:1px solid var(--border); }
+thead th { padding:10px 16px; font-size:11px; color:var(--text3); font-weight:700; text-align:left; text-transform:uppercase; letter-spacing:0.8px; }
+tbody tr { border-bottom:1px solid var(--border); transition:background 0.1s; }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:var(--bg3); }
+tbody td { padding:12px 16px; font-size:13px; }
+.badge {
+  display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700;
+}
+.badge-green { background:rgba(46,201,126,0.15); color:var(--green); }
+.badge-red { background:rgba(232,69,69,0.15); color:var(--red); }
+.badge-orange { background:rgba(245,166,35,0.15); color:var(--accent); }
+.badge-blue { background:rgba(74,158,255,0.15); color:var(--blue); }
+.badge-purple { background:rgba(155,127,232,0.15); color:var(--purple); }
+.action-btns { display:flex; gap:6px; }
+.act-btn {
+  background:var(--bg4); border:1px solid var(--border);
+  color:var(--text2); padding:4px 10px; border-radius:5px;
+  cursor:pointer; font-size:12px; transition:all 0.15s;
+}
+.act-btn:hover { border-color:var(--accent); color:var(--accent); }
+.act-btn.del:hover { border-color:var(--red); color:var(--red); }
+
+/* Fuel stock bars */
+.fuel-bar { height:6px; border-radius:3px; overflow:hidden; background:var(--bg4); margin-top:4px; }
+.fuel-fill { height:100%; border-radius:3px; transition:width 0.5s; }
+
+/* Modal */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.7); z-index:1000;
+  align-items:center; justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--bg2); border:1px solid var(--border2);
+  border-radius:12px; padding:28px; width:500px; max-width:95vw;
+  box-shadow:var(--shadow); max-height:90vh; overflow-y:auto;
+  animation:slideUp 0.2s ease;
+}
+@keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.modal-title { font-size:17px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+.modal-form { display:grid; gap:14px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-label { font-size:12px; color:var(--text2); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
+.form-input, .form-select {
+  background:var(--bg3); border:1px solid var(--border);
+  color:var(--text); padding:9px 12px; border-radius:var(--radius);
+  font-size:13px; outline:none; transition:border-color 0.2s;
+  font-family:'IBM Plex Sans',sans-serif;
+}
+.form-input:focus, .form-select:focus { border-color:var(--accent); }
+.modal-actions { display:flex; gap:10px; margin-top:8px; justify-content:flex-end; }
+.btn-cancel {
+  background:var(--bg3); border:1px solid var(--border);
+  color:var(--text2); padding:9px 18px; border-radius:var(--radius);
+  cursor:pointer; font-size:13px;
+}
+.btn-cancel:hover { border-color:var(--border2); color:var(--text); }
+
+/* Alert toast */
+.toast {
+  position:fixed; bottom:24px; right:24px;
+  background:var(--bg3); border:1px solid var(--green);
+  color:var(--text); padding:12px 20px; border-radius:var(--radius);
+  font-size:13px; font-weight:600; z-index:2000;
+  display:none; align-items:center; gap:10px;
+  box-shadow:var(--shadow); animation:slideUp 0.2s ease;
+}
+.toast.show { display:flex; }
+.toast.error { border-color:var(--red); }
+
+/* Stock alerts */
+.alert-card {
+  background:rgba(232,69,69,0.12); border:2px solid rgba(232,69,69,0.5);
+  border-radius:var(--radius); padding:16px 20px; margin-bottom:20px;
+  display:flex; align-items:center; gap:14px; font-size:14px;
+  animation: alert-pulse 2s infinite;
+}
+.alert-icon { font-size:22px; animation: alert-icon-bounce 1s infinite; }
+@keyframes alert-pulse {
+  0%, 100% { background:rgba(232,69,69,0.12); border-color:rgba(232,69,69,0.5); }
+  50% { background:rgba(232,69,69,0.2); border-color:rgba(232,69,69,0.8); }
+}
+@keyframes alert-icon-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Summary row */
+.summary-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+.summary-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:16px 20px;
+}
+
+/* Payroll row */
+.payroll-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px; }
+
+/* Report buttons */
+.report-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:24px; }
+.report-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px; cursor:pointer;
+  transition:all 0.2s; text-align:center;
+}
+.report-card:hover { border-color:var(--accent); background:var(--bg3); }
+.report-icon { font-size:32px; margin-bottom:12px; }
+.report-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+.report-desc { font-size:12px; color:var(--text3); }
+
+/* User management */
+.permission-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:4px; }
+.perm-check { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); cursor:pointer; }
+.perm-check input { accent-color:var(--accent); }
+
+/* Stock grid */
+.stock-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:24px; }
+.stock-card {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--radius); padding:20px;
+}
+.stock-type { font-size:12px; color:var(--text3); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+.stock-val { font-size:24px; font-weight:700; font-family:'IBM Plex Mono',monospace; margin-bottom:4px; }
+.stock-capacity { font-size:11px; color:var(--text3); margin-bottom:10px; }
+
+/* scrollbar */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg2); }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+
+/* Responsive adjustments */
+@media (max-width:1100px) {
+  .stat-grid { grid-template-columns:repeat(2,1fr); }
+  .charts-row { grid-template-columns:1fr; }
+}
+
+/* Large screens (1400px and up) */
+@media (min-width:1400px) {
+  :root {
+    --sidebar-width: 260px;
+  }
+  .sidebar { width: var(--sidebar-width); }
+  .main { margin-left: var(--sidebar-width); }
+  .topbar { padding: 0 32px; height: 64px; }
+  .content { padding: 28px 32px; }
+  .stat-grid { gap: 20px; }
+  .stat-card { padding: 24px; }
+  .stat-label { font-size: 12px; }
+  .stat-val { font-size: 30px; }
+  .charts-row { gap: 20px; }
+  .chart-card { padding: 24px; }
+  .chart-wrap { height: 240px; }
+  .table-card { margin-bottom: 28px; }
+  .table-header { padding: 18px 24px; }
+  thead th { font-size: 12px; padding: 12px 18px; }
+  tbody td { font-size: 14px; padding: 14px 18px; }
+  .page-title { font-size: 19px; }
+  .modal { width: 560px; padding: 32px; }
+  .stock-grid { gap: 20px; }
+  .stock-card { padding: 24px; }
+  .report-grid { gap: 20px; }
+  .report-card { padding: 28px; }
+  .report-icon { font-size: 36px; }
+  .summary-row { gap: 20px; }
+  .payroll-summary { gap: 20px; }
+}
+
+/* Extra large screens (1600px and up) */
+@media (min-width:1600px) {
+  :root {
+    --sidebar-width: 280px;
+  }
+  .sidebar { width: var(--sidebar-width); }
+  .main { margin-left: var(--sidebar-width); }
+  .topbar { padding: 0 36px; height: 68px; }
+  .content { padding: 32px 36px; }
+  .stat-grid { gap: 24px; }
+  .stat-card { padding: 28px; }
+  .stat-label { font-size: 13px; }
+  .stat-val { font-size: 34px; }
+  .stat-sub { font-size: 13px; }
+  .charts-row { gap: 24px; }
+  .chart-card { padding: 28px; }
+  .chart-wrap { height: 260px; }
+  .card-title { font-size: 15px; }
+  .card-sub { font-size: 12px; }
+  .table-card { margin-bottom: 32px; }
+  .table-header { padding: 20px 28px; }
+  thead th { font-size: 12px; padding: 14px 20px; letter-spacing: 1px; }
+  tbody td { font-size: 14px; padding: 16px 20px; }
+  .page-title { font-size: 21px; }
+  .modal { width: 600px; padding: 36px; }
+  .modal-title { font-size: 19px; }
+  .stock-grid { gap: 24px; }
+  .stock-card { padding: 28px; }
+  .stock-val { font-size: 28px; }
+  .report-grid { gap: 24px; }
+  .report-card { padding: 32px; }
+  .report-icon { font-size: 40px; }
+  .report-title { font-size: 16px; }
+  .summary-row { gap: 24px; }
+  .payroll-summary { gap: 24px; }
+  .search-input { width: 240px; padding: 9px 14px; font-size: 14px; }
+  .select-input { padding: 9px 12px; font-size: 14px; }
+  .btn-primary, .topbar-btn { padding: 10px 18px; font-size: 14px; }
+  .nav-item { padding: 12px 24px; font-size: 14px; }
+  .nav-section { padding: 10px 24px 6px; font-size: 11px; }
+  .sidebar-logo { padding: 28px 24px 24px; }
+  .logo-name { font-size: 17px; }
+  .logo-icon { font-size: 24px; }
+  .admin-avatar { width: 36px; height: 36px; font-size: 14px; }
+  .admin-name { font-size: 14px; }
+  .toast { padding: 14px 24px; font-size: 14px; bottom: 28px; right: 28px; }
+  .alert-card { padding: 20px 24px; font-size: 15px; }
+  .alert-icon { font-size: 26px; }
+}
+
+/* Full HD screens (1920px and up) */
+@media (min-width:1920px) {
+  :root {
+    --sidebar-width: 300px;
+  }
+  .sidebar { width: var(--sidebar-width); }
+  .main { margin-left: var(--sidebar-width); }
+  .topbar { padding: 0 40px; height: 72px; }
+  .content { padding: 36px 40px; }
+  .stat-grid { gap: 28px; margin-bottom: 32px; }
+  .stat-card { padding: 32px; }
+  .stat-label { font-size: 14px; margin-bottom: 10px; }
+  .stat-val { font-size: 38px; }
+  .stat-sub { font-size: 14px; margin-top: 8px; }
+  .charts-row { gap: 28px; margin-bottom: 32px; }
+  .chart-card { padding: 32px; }
+  .chart-wrap { height: 300px; }
+  .card-title { font-size: 16px; margin-bottom: 6px; }
+  .card-sub { font-size: 13px; margin-bottom: 20px; }
+  .table-card { margin-bottom: 36px; border-radius: 10px; }
+  .table-header { padding: 22px 32px; }
+  thead th { font-size: 13px; padding: 16px 24px; }
+  tbody td { font-size: 15px; padding: 18px 24px; }
+  .page-title { font-size: 23px; }
+  .modal { width: 660px; padding: 40px; border-radius: 14px; }
+  .modal-title { font-size: 21px; margin-bottom: 24px; }
+  .modal-form { gap: 18px; }
+  .form-label { font-size: 13px; }
+  .form-input, .form-select { padding: 11px 14px; font-size: 14px; }
+  .stock-grid { gap: 28px; margin-bottom: 32px; }
+  .stock-card { padding: 32px; border-radius: 10px; }
+  .stock-type { font-size: 13px; margin-bottom: 8px; }
+  .stock-val { font-size: 32px; margin-bottom: 6px; }
+  .stock-capacity { font-size: 12px; margin-bottom: 14px; }
+  .report-grid { gap: 28px; margin-bottom: 32px; }
+  .report-card { padding: 36px; border-radius: 10px; }
+  .report-icon { font-size: 44px; margin-bottom: 16px; }
+  .report-title { font-size: 17px; margin-bottom: 6px; }
+  .report-desc { font-size: 13px; }
+  .summary-row { gap: 28px; margin-bottom: 32px; }
+  .payroll-summary { gap: 28px; margin-bottom: 24px; }
+  .search-input { width: 280px; padding: 10px 16px; font-size: 14px; }
+  .select-input { padding: 10px 14px; font-size: 14px; }
+  .btn-primary, .topbar-btn { padding: 11px 20px; font-size: 14px; border-radius: 10px; }
+  .nav-item { padding: 14px 28px; font-size: 15px; }
+  .nav-section { padding: 12px 28px 8px; font-size: 12px; }
+  .sidebar-logo { padding: 32px 28px 28px; }
+  .logo-name { font-size: 18px; }
+  .logo-sub { font-size: 12px; }
+  .logo-icon { font-size: 26px; }
+  .admin-avatar { width: 40px; height: 40px; font-size: 15px; }
+  .admin-name { font-size: 15px; }
+  .admin-role { font-size: 12px; }
+  .toast { padding: 16px 28px; font-size: 15px; bottom: 32px; right: 32px; border-radius: 10px; }
+  .alert-card { padding: 24px 28px; font-size: 16px; border-radius: 10px; }
+  .alert-icon { font-size: 28px; }
+  .badge { padding: 4px 12px; font-size: 12px; border-radius: 22px; }
+  .act-btn { padding: 6px 14px; font-size: 13px; border-radius: 6px; }
+  .fuel-bar { height: 8px; border-radius: 4px; }
+  .nav-badge { padding: 3px 8px; font-size: 11px; }
+  .permission-grid { gap: 12px; }
+  .perm-check { font-size: 13px; }
+}
+
+/* QHD / Ultra-wide screens (2560px and up) */
+@media (min-width:2560px) {
+  :root {
+    --sidebar-width: 340px;
+  }
+  .sidebar { width: var(--sidebar-width); }
+  .main { margin-left: var(--sidebar-width); }
+  .topbar { padding: 0 48px; height: 80px; }
+  .content { padding: 44px 48px; }
+  .stat-grid { gap: 36px; margin-bottom: 40px; }
+  .stat-card { padding: 40px; border-radius: 12px; }
+  .stat-label { font-size: 16px; margin-bottom: 14px; }
+  .stat-val { font-size: 46px; }
+  .stat-sub { font-size: 16px; margin-top: 10px; }
+  .charts-row { gap: 36px; margin-bottom: 40px; }
+  .chart-card { padding: 40px; border-radius: 12px; }
+  .chart-wrap { height: 360px; }
+  .card-title { font-size: 18px; margin-bottom: 8px; }
+  .card-sub { font-size: 14px; margin-bottom: 24px; }
+  .table-card { margin-bottom: 44px; border-radius: 14px; }
+  .table-header { padding: 28px 40px; }
+  thead th { font-size: 14px; padding: 20px 32px; }
+  tbody td { font-size: 17px; padding: 22px 32px; }
+  .page-title { font-size: 28px; }
+  .modal { width: 780px; padding: 48px; border-radius: 18px; }
+  .modal-title { font-size: 24px; margin-bottom: 32px; }
+  .modal-form { gap: 22px; }
+  .form-label { font-size: 14px; }
+  .form-input, .form-select { padding: 14px 18px; font-size: 16px; border-radius: 10px; }
+  .stock-grid { gap: 36px; margin-bottom: 40px; }
+  .stock-card { padding: 40px; border-radius: 12px; }
+  .stock-type { font-size: 15px; margin-bottom: 10px; }
+  .stock-val { font-size: 40px; margin-bottom: 8px; }
+  .stock-capacity { font-size: 14px; margin-bottom: 18px; }
+  .report-grid { gap: 36px; margin-bottom: 40px; }
+  .report-card { padding: 44px; border-radius: 12px; }
+  .report-icon { font-size: 52px; margin-bottom: 20px; }
+  .report-title { font-size: 20px; margin-bottom: 8px; }
+  .report-desc { font-size: 15px; }
+  .summary-row { gap: 36px; margin-bottom: 40px; }
+  .payroll-summary { gap: 36px; margin-bottom: 32px; }
+  .search-input { width: 340px; padding: 12px 20px; font-size: 16px; }
+  .select-input { padding: 12px 18px; font-size: 16px; border-radius: 10px; }
+  .btn-primary, .topbar-btn { padding: 14px 26px; font-size: 16px; border-radius: 12px; }
+  .nav-item { padding: 16px 32px; font-size: 17px; }
+  .nav-section { padding: 16px 32px 10px; font-size: 13px; }
+  .sidebar-logo { padding: 40px 32px 36px; }
+  .logo-name { font-size: 22px; }
+  .logo-sub { font-size: 14px; }
+  .logo-icon { font-size: 32px; }
+  .admin-avatar { width: 48px; height: 48px; font-size: 18px; }
+  .admin-name { font-size: 17px; }
+  .admin-role { font-size: 13px; }
+  .toast { padding: 20px 36px; font-size: 17px; bottom: 40px; right: 40px; border-radius: 12px; }
+  .alert-card { padding: 32px 36px; font-size: 18px; border-radius: 12px; }
+  .alert-icon { font-size: 34px; }
+  .badge { padding: 6px 16px; font-size: 14px; border-radius: 26px; }
+  .act-btn { padding: 8px 18px; font-size: 14px; border-radius: 8px; }
+  .fuel-bar { height: 10px; border-radius: 5px; }
+  .nav-badge { padding: 4px 10px; font-size: 13px; }
+  .permission-grid { gap: 16px; }
+  .perm-check { font-size: 15px; }
+  .form-row { gap: 18px; }
+  .modal-actions { margin-top: 16px; }
+  .btn-cancel, .btn-primary { padding: 12px 24px; font-size: 15px; border-radius: 10px; }
+  .live-dot { width: 10px; height: 10px; }
+  .topbar-right { gap: 16px; }
+}
+
+/* 4K screens (3840px and up) */
+@media (min-width:3840px) {
+  :root {
+    --sidebar-width: 400px;
+  }
+  .sidebar { width: var(--sidebar-width); }
+  .main { margin-left: var(--sidebar-width); }
+  .topbar { padding: 0 64px; height: 96px; }
+  .content { padding: 56px 64px; }
+  .stat-grid { gap: 48px; margin-bottom: 48px; }
+  .stat-card { padding: 48px; }
+  .stat-label { font-size: 18px; }
+  .stat-val { font-size: 56px; }
+  .stat-sub { font-size: 18px; }
+  .charts-row { gap: 48px; margin-bottom: 48px; }
+  .chart-card { padding: 48px; }
+  .chart-wrap { height: 420px; }
+  .card-title { font-size: 22px; }
+  .card-sub { font-size: 16px; }
+  .table-card { margin-bottom: 56px; }
+  .table-header { padding: 36px 56px; }
+  thead th { font-size: 16px; padding: 24px 40px; }
+  tbody td { font-size: 20px; padding: 28px 40px; }
+  .page-title { font-size: 34px; }
+  .modal { width: 920px; padding: 64px; }
+  .modal-title { font-size: 30px; }
+  .form-input, .form-select { padding: 18px 24px; font-size: 18px; }
+  .stock-grid { gap: 48px; margin-bottom: 48px; }
+  .stock-card { padding: 48px; }
+  .stock-val { font-size: 48px; }
+  .report-grid { gap: 48px; margin-bottom: 48px; }
+  .report-card { padding: 56px; }
+  .report-icon { font-size: 64px; }
+  .report-title { font-size: 24px; }
+  .report-desc { font-size: 18px; }
+  .search-input { width: 420px; padding: 16px 24px; font-size: 18px; }
+  .select-input { padding: 16px 24px; font-size: 18px; }
+  .btn-primary, .topbar-btn { padding: 18px 32px; font-size: 18px; }
+  .nav-item { padding: 20px 40px; font-size: 20px; }
+  .nav-section { padding: 20px 40px 14px; font-size: 14px; }
+  .sidebar-logo { padding: 48px 40px 44px; }
+  .logo-name { font-size: 26px; }
+  .logo-icon { font-size: 40px; }
+  .admin-avatar { width: 56px; height: 56px; font-size: 22px; }
+  .admin-name { font-size: 20px; }
+  .toast { padding: 24px 44px; font-size: 20px; bottom: 48px; right: 48px; }
+  .alert-card { padding: 40px 48px; font-size: 22px; }
+  .alert-icon { font-size: 42px; }
+  .badge { padding: 8px 20px; font-size: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">⛽</div>
+    <div class="logo-name">FUELOPS</div>
+    <div class="logo-sub">Station Mgmt v2.4</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showSection('dashboard',this)">
+      <span class="icon">▦</span> Dashboard
+    </div>
+    <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="showSection('sales',this)">
+      <span class="icon">⚡</span> Fuel Sales
+    </div>
+    <div class="nav-item" onclick="showSection('expenses',this)">
+      <span class="icon">📋</span> Expenses
+    </div>
+    <div class="nav-item" onclick="showSection('stock',this)">
+      <span class="icon">🛢</span> Fuel Stock {% if low_stock_items %}<span class="nav-badge">{{ low_stock_items|length }}</span>{% endif %}
+    </div>
+    <div class="nav-section">Finance</div>
+    <div class="nav-item" onclick="showSection('payroll',this)">
+      <span class="icon">💳</span> Payroll
+    </div>
+    <div class="nav-item" onclick="showSection('reports',this)">
+      <span class="icon">📊</span> Reports
+    </div>
+    <div class="nav-section">Admin</div>
+    <div class="nav-item" onclick="showSection('users',this)">
+      <span class="icon">👥</span> Users & Roles
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="admin-pill">
+      <div class="admin-avatar">AD</div>
+      <div class="admin-info">
+        <div class="admin-name">{% if user.is_authenticated %}{{ user.get_full_name|default:user.username }}{% else %}Admin User{% endif %}</div>
+        <div class="admin-role">⚙ Administrator</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<main class="main">
+  <div class="topbar">
+    <div class="page-title" id="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3)">
+        <div class="live-dot"></div> Live · <span class="mono" id="live-time">{{ current_time }}</span>
+      </div>
+      <button class="topbar-btn" onclick="showSection('stock', document.querySelectorAll('.nav-item')[3])">🔔 Alerts {% if low_stock_items %}<span style="background:var(--red);color:#fff;padding:1px 5px;border-radius:10px;font-size:10px;margin-left:2px">{{ low_stock_items|length }}</span>{% endif %}</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="section active" id="sec-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card s-orange">
+          <div class="stat-label">Today's Revenue</div>
+          <div class="stat-val mono" id="stat-revenue">₱{{ today_revenue|floatformat:0 }}</div>
+          <div class="stat-sub"><span class="stat-up">▲ Live</span> from fuel sales</div>
+        </div>
+        <div class="stat-card s-red">
+          <div class="stat-label">Monthly Expenses</div>
+          <div class="stat-val mono" id="stat-expenses">₱{{ total_expenses|floatformat:0 }}</div>
+          <div class="stat-sub">{{ expense_labels|length }} categories this month</div>
+        </div>
+        <div class="stat-card s-green">
+          <div class="stat-label">Net Profit</div>
+          <div class="stat-val mono" id="stat-profit">₱{{ net_profit|floatformat:0 }}</div>
+          <div class="stat-sub"><span class="stat-up">▲ Today</span> after expenses</div>
+        </div>
+        <div class="stat-card s-blue">
+          <div class="stat-label">Fuel Transactions</div>
+          <div class="stat-val mono" id="stat-txn">{{ total_transactions }}</div>
+          <div class="stat-sub">Today's sales count</div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="card-title">Monthly Sales & Profit</div>
+          <div class="card-sub">Last 12 months performance</div>
+          <div class="chart-wrap"><canvas id="salesChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="card-title">Expense Breakdown</div>
+          <div class="card-sub">This Month</div>
+          <div class="chart-wrap"><canvas id="expenseChart"></canvas></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="table-card">
+          <div class="table-header">
+            <div><div class="card-title">Recent Transactions</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Last 5 fuel sales</div></div>
+          </div>
+          <table>
+            <thead><tr><th>ID</th><th>Fuel</th><th>Liters</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              {% for sale in recent_sales %}
+              <tr>
+                <td class="mono" style="font-size:11px;color:var(--text3)">{{ sale.transaction_id }}</td>
+                <td><span class="badge {% if sale.fuel_type.name == 'Unleaded 91' %}badge-orange{% elif sale.fuel_type.name == 'Unleaded 97' %}badge-blue{% elif sale.fuel_type.name == 'Diesel' %}badge-green{% else %}badge-purple{% endif %}">{{ sale.fuel_type.name }}</span></td>
+                <td class="mono">{{ sale.liters }}L</td>
+                <td class="mono" style="color:var(--accent)">₱{{ sale.total_amount|floatformat:0 }}</td>
+                <td>{% if sale.status == 'Paid' %}<span class="badge badge-green">Paid</span>{% elif sale.status == 'Pending' %}<span class="badge badge-orange">Pending</span>{% else %}<span class="badge badge-red">Cancelled</span>{% endif %}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">No transactions yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <div><div class="card-title">Stock Levels</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Tank fill status</div></div>
+          </div>
+          <table>
+            <thead><tr><th>Fuel Type</th><th>Volume</th><th>Capacity</th><th>Level</th></tr></thead>
+            <tbody>
+              {% for ft in fuel_types %}
+              <tr>
+                <td><span class="badge {% if ft.name == 'Unleaded 91' %}badge-orange{% elif ft.name == 'Unleaded 97' %}badge-blue{% elif ft.name == 'Diesel' %}badge-green{% else %}badge-purple{% endif %}">{{ ft.name }}</span></td>
+                <td class="mono">{{ ft.current_stock|floatformat:0 }}L</td>
+                <td class="mono" style="color:var(--text3)">{{ ft.tank_capacity|floatformat:0 }}L</td>
+                <td style="min-width:100px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <div class="fuel-bar" style="flex:1"><div class="fuel-fill" style="width:{% widthratio ft.current_stock ft.tank_capacity 100 %}%;background:{% if ft.stock_percentage < 25 %}var(--red){% elif ft.stock_percentage < 50 %}var(--accent){% else %}var(--green){% endif %}"></div></div>
+                    <span style="font-size:11px;color:{% if ft.stock_percentage < 25 %}var(--red){% elif ft.stock_percentage < 50 %}var(--accent){% else %}var(--green){% endif %};font-family:'IBM Plex Mono',monospace">{% widthratio ft.current_stock ft.tank_capacity 100 %}%</span>
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">No fuel types configured</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FUEL SALES -->
+    <div class="section" id="sec-sales">
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card s-orange">
+          <div class="stat-label">Today's Sales</div>
+          <div class="stat-val mono">₱{{ today_revenue|floatformat:0 }}</div>
+          <div class="stat-sub">{{ total_transactions }} transactions today</div>
+        </div>
+        <div class="stat-card s-blue">
+          <div class="stat-label">Total Transactions</div>
+          <div class="stat-val mono">{{ sales|length|default:0 }}</div>
+          <div class="stat-sub">All-time sales count</div>
+        </div>
+        <div class="stat-card s-green">
+          <div class="stat-label">Active Fuel Types</div>
+          <div class="stat-val mono">{{ fuel_types|length }}</div>
+          <div class="stat-sub">Available fuels</div>
+        </div>
+      </div>
+    <div class="table-card">
+        <div class="table-header">
+          <div><div class="card-title">Fuel Sales Records</div></div>
+          <div class="table-controls">
+            <input type="text" class="search-input" placeholder="🔍  Search transactions..." oninput="filterTable('sales-body',this.value)">
+            <select class="select-input" id="fuel-filter" onchange="filterByFuel(this.value)">
+              <option value="">All Fuels</option>
+              {% for ft in fuel_types %}
+              <option value="{{ ft.name }}">{{ ft.name }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn-primary" onclick="openModal('modal-sale','Add Fuel Sale')">＋ New Sale</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Txn ID</th><th>Date & Time</th><th>Fuel Type</th><th>Liters</th><th>Price/L</th><th>Total</th><th>Cashier</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="sales-body">
+            {% for sale in recent_sales %}
+            <tr>
+              <td class="mono" style="color:var(--text3);font-size:12px">{{ sale.transaction_id }}</td>
+              <td style="color:var(--text2);font-size:12px">{{ sale.created_at|date:"Y-m-d H:i" }}</td>
+              <td><span class="badge {% if sale.fuel_type.name == 'Unleaded 91' %}badge-orange{% elif sale.fuel_type.name == 'Unleaded 97' %}badge-blue{% elif sale.fuel_type.name == 'Diesel' %}badge-green{% else %}badge-purple{% endif %}">{{ sale.fuel_type.name }}</span></td>
+              <td class="mono">{{ sale.liters }}L</td>
+              <td class="mono">₱{{ sale.price_per_liter|floatformat:2 }}</td>
+              <td class="mono" style="color:var(--accent);font-weight:700">₱{{ sale.total_amount|floatformat:0 }}</td>
+              <td>{{ sale.cashier_name }}</td>
+              <td>{% if sale.status == 'Paid' %}<span class="badge badge-green">Paid</span>{% elif sale.status == 'Pending' %}<span class="badge badge-orange">Pending</span>{% else %}<span class="badge badge-red">Cancelled</span>{% endif %}</td>
+              <td>
+                <div class="action-btns">
+                  {% if sale.status == 'Pending' %}
+                  <button class="act-btn" style="color:var(--green);border-color:var(--green)" onclick="approveSale('{{ sale.transaction_id }}')">✓ Approve</button>
+                  <button class="act-btn del" onclick="denySale('{{ sale.transaction_id }}')">✗ Reject</button>
+                  {% else %}
+                  <button class="act-btn del" onclick="deleteSale('{{ sale.transaction_id }}')">🗑 Delete</button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" style="text-align:center;color:var(--text3);padding:30px">No sales records found. Add your first sale!</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- EXPENSES -->
+    <div class="section" id="sec-expenses">
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat-card s-red">
+          <div class="stat-label">Monthly Expenses</div>
+          <div class="stat-val mono">₱{{ total_expenses|floatformat:0 }}</div>
+          <div class="stat-sub">{{ expense_labels|length }} categories</div>
+        </div>
+        {% for cat_name, cat_amount in expense_by_category.items %}
+        <div class="stat-card s-{% if forloop.counter == 2 %}orange{% elif forloop.counter == 3 %}blue{% else %}green{% endif %}">
+          <div class="stat-label">{{ cat_name }}</div>
+          <div class="stat-val mono">₱{{ cat_amount|floatformat:0 }}</div>
+          <div class="stat-sub">{% widthratio cat_amount total_expenses 100 %}% of total</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <div><div class="card-title">Expense Records</div></div>
+          <div class="table-controls">
+            <input type="text" class="search-input" placeholder="🔍  Search expenses..." oninput="filterTable('expense-body',this.value)">
+            <select class="select-input">
+              <option value="">All Categories</option>
+              {% for cat in expense_categories %}
+              <option value="{{ cat.name }}">{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn-primary" onclick="openModal('modal-expense','Add Expense')">＋ Add Expense</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Exp ID</th><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Approved By</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="expense-body">
+            {% for exp in recent_expenses %}
+            <tr>
+              <td class="mono" style="color:var(--text3);font-size:12px">{{ exp.expense_id }}</td>
+              <td style="color:var(--text2);font-size:12px">{{ exp.expense_date|date:'Y-m-d' }}</td>
+              <td><span class="badge badge-orange">{{ exp.category.name }}</span></td>
+              <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ exp.description }}</td>
+              <td class="mono" style="color:var(--red);font-weight:700">₱{{ exp.amount|floatformat:0 }}</td>
+              <td>{{ exp.approved_by_name }}</td>
+              <td>{% if exp.status == 'Approved' %}<span class="badge badge-green">Approved</span>{% elif exp.status == 'Pending' %}<span class="badge badge-orange">Pending</span>{% else %}<span class="badge badge-red">Rejected</span>{% endif %}</td>
+              <td>
+                <div class="action-btns">
+                  {% if exp.status == 'Pending' %}
+                  <button class="act-btn" style="color:var(--green);border-color:var(--green)" onclick="approveExpense('{{ exp.expense_id }}')">✓ Approve</button>
+                  <button class="act-btn del" onclick="rejectExpense('{{ exp.expense_id }}')">✗ Reject</button>
+                  {% else %}
+                  <button class="act-btn del" onclick="deleteExpense('{{ exp.expense_id }}')">🗑 Delete</button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:30px">No expense records found</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FUEL STOCK -->
+    <div class="section" id="sec-stock">
+      {% if low_stock_items %}
+      <div class="alert-card">
+        <span class="alert-icon">⚠️</span>
+        <div><strong>Low Stock Alert:</strong> 
+          {% for item in low_stock_items %}
+          {{ item.name }} ({% widthratio item.current_stock item.tank_capacity 100 %}% capacity){% if not forloop.last %}, {% endif %}
+          {% endfor %}
+          — Reorder recommended.
+        </div>
+      </div>
+      {% endif %}
+      <div class="stock-grid" id="stock-cards">
+        {% for ft in fuel_types %}
+        <div class="stock-card">
+          <div class="stock-type">Tank {{ ft.id }}</div>
+          <div class="stock-val" style="color:{{ ft.color }}">{{ ft.current_stock|floatformat:0 }}L</div>
+          <div class="stock-capacity">Capacity: {{ ft.tank_capacity|floatformat:0 }}L · {% widthratio ft.current_stock ft.tank_capacity 100 %}% filled</div>
+          <div class="fuel-bar"><div class="fuel-fill" style="width:{% widthratio ft.current_stock ft.tank_capacity 100 %}%;background:{% if ft.stock_percentage < 25 %}var(--red){% elif ft.stock_percentage < 50 %}var(--accent){% else %}var(--green){% endif %}"></div></div>
+          <div style="margin-top:12px">
+            <span class="badge {% if ft.name == 'Unleaded 91' %}badge-orange{% elif ft.name == 'Unleaded 97' %}badge-blue{% elif ft.name == 'Diesel' %}badge-green{% else %}badge-purple{% endif %}" style="margin-bottom:8px;display:inline-block">{{ ft.name }}</span>
+            {% if ft.is_low_stock %}<div style="color:var(--red);font-size:12px;margin-top:6px">⚠ Low Stock — Reorder Now</div>{% endif %}
+          </div>
+          <button class="act-btn" style="margin-top:10px;width:100%;justify-content:center;display:flex" onclick="openDeliveryModal('{{ ft.name }}')">+ Log Delivery</button>
+        </div>
+        {% empty %}
+        <div class="stock-card" style="grid-column: span 3; text-align:center; padding:40px;">
+          <div style="font-size:48px;margin-bottom:16px">🛢</div>
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px">No Fuel Types Configured</div>
+          <div style="color:var(--text3);margin-bottom:20px">Add fuel types to start tracking stock levels</div>
+          <button class="btn-primary" style="margin:0 auto" onclick="window.open('/admin/Gasoline/fueltype/', '_blank')">Configure Fuel Types</button>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <div><div class="card-title">Fuel Delivery Log</div></div>
+          <div class="table-controls">
+            <button class="btn-primary" onclick="openModal('modal-delivery','Log Fuel Delivery')">＋ Log Delivery</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Delivery ID</th><th>Date</th><th>Fuel Type</th><th>Volume (L)</th><th>Supplier</th><th>Cost</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="delivery-body">
+            {% for delivery in deliveries %}
+            <tr>
+              <td class="mono" style="color:var(--text3);font-size:12px">{{ delivery.delivery_id }}</td>
+              <td style="color:var(--text2);font-size:12px">{{ delivery.delivery_date|date:"Y-m-d" }}</td>
+              <td><span class="badge {% if delivery.fuel_type.name == 'Unleaded 91' %}badge-orange{% elif delivery.fuel_type.name == 'Unleaded 97' %}badge-blue{% elif delivery.fuel_type.name == 'Diesel' %}badge-green{% else %}badge-purple{% endif %}">{{ delivery.fuel_type.name }}</span></td>
+              <td class="mono">{{ delivery.volume|floatformat:0 }}L</td>
+              <td>{{ delivery.supplier }}</td>
+              <td class="mono" style="color:var(--red)">₱{{ delivery.cost|floatformat:0 }}</td>
+              <td>{% if delivery.status == 'Delivered' %}<span class="badge badge-green">Delivered</span>{% elif delivery.status == 'Scheduled' %}<span class="badge badge-blue">Scheduled</span>{% else %}<span class="badge badge-red">Cancelled</span>{% endif %}</td>
+              <td>
+                <div class="action-btns">
+                  <button class="act-btn del" onclick="deleteDelivery('{{ delivery.delivery_id }}')">🗑 Delete</button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:30px">No delivery records found</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PAYROLL -->
+    <div class="section" id="sec-payroll">
+      <div class="payroll-summary">
+        <div class="stat-card s-green">
+          <div class="stat-label">Total Monthly Payroll</div>
+          <div class="stat-val mono">₱{{ total_payroll|floatformat:0 }}</div>
+          <div class="stat-sub">{{ employees|length }} active employees</div>
+        </div>
+        <div class="stat-card s-orange">
+          <div class="stat-label">Pending Payouts</div>
+          <div class="stat-val mono">₱{{ total_pending|floatformat:0 }}</div>
+          <div class="stat-sub">{{ pending_employees }} employees pending</div>
+        </div>
+        <div class="stat-card s-blue">
+          <div class="stat-label">Paid This Month</div>
+          <div class="stat-val mono">₱{{ total_paid|floatformat:0 }}</div>
+          <div class="stat-sub">{{ paid_employees }} employees paid</div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <div><div class="card-title">Employee Payroll</div></div>
+          <div class="table-controls">
+            <input type="text" class="search-input" placeholder="🔍  Search employees..." oninput="filterTable('payroll-body',this.value)">
+            <select class="select-input">
+              <option value="">All Roles</option>
+              <option>Pump Attendant</option>
+              <option>Cashier</option>
+              <option>Supervisor</option>
+              <option>Manager</option>
+            </select>
+            <button class="btn-primary" onclick="openModal('modal-employee','Add Employee')">＋ Add Employee</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>EMP ID</th><th>Name</th><th>Role</th><th>Basic Pay</th><th>Allowance</th><th>Deductions</th><th>Net Pay</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="payroll-body">
+            {% for emp in employees %}
+            <tr>
+              <td class="mono" style="color:var(--text3);font-size:12px">{{ emp.employee_id }}</td>
+              <td style="font-weight:600">{{ emp.full_name }}</td>
+              <td><span class="badge badge-blue">{{ emp.role }}</span></td>
+              <td class="mono">₱{{ emp.basic_pay|floatformat:0 }}</td>
+              <td class="mono" style="color:var(--green)">₱{{ emp.allowance|floatformat:0 }}</td>
+              <td class="mono" style="color:var(--red)">-₱{{ emp.deductions|floatformat:0 }}</td>
+              <td class="mono" style="color:var(--accent);font-weight:700">₱{{ emp.net_pay|floatformat:0 }}</td>
+              <td>{% if emp.payroll_status == 'Paid' %}<span class="badge badge-green">Paid</span>{% else %}<span class="badge badge-orange">Pending</span>{% endif %}</td>
+              <td>
+                <div class="action-btns">
+                  {% if emp.payroll_status == 'Pending' %}
+                  <button class="act-btn" style="color:var(--green);border-color:var(--green)" onclick="payEmployee('{{ emp.employee_id }}')">✓ Approve Payment</button>
+                  {% endif %}
+                  <button class="act-btn del" onclick="deleteEmployee('{{ emp.employee_id }}')">🗑 Delete</button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" style="text-align:center;color:var(--text3);padding:30px">No employees found</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="section" id="sec-reports">
+      <div class="report-grid">
+        <div class="report-card">
+          <div class="report-icon">📈</div>
+          <div class="report-title">Sales Report</div>
+          <div class="report-desc">Daily, weekly & monthly fuel sales breakdown</div>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="window.location.href='{% url 'export-sales-pdf' %}'">📄 PDF</button>
+            <button class="btn-primary" style="font-size:12px;padding:6px 12px;background:var(--green)" onclick="window.location.href='{% url 'export-sales-excel' %}'">📊 Excel</button>
+          </div>
+        </div>
+        <div class="report-card">
+          <div class="report-icon">💸</div>
+          <div class="report-title">Expense Report</div>
+          <div class="report-desc">Categorized expense analysis and trends</div>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="window.location.href='{% url 'export-expenses-pdf' %}'">📄 PDF</button>
+            <button class="btn-primary" style="font-size:12px;padding:6px 12px;background:var(--green)" onclick="window.location.href='{% url 'export-expenses-excel' %}'">📊 Excel</button>
+          </div>
+        </div>
+        <div class="report-card">
+          <div class="report-icon">📉</div>
+          <div class="report-title">Profit & Loss</div>
+          <div class="report-desc">Revenue vs expenses, net profit summary</div>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="window.location.href='{% url 'export-profit-pdf' %}'">📄 PDF</button>
+            <button class="btn-primary" style="font-size:12px;padding:6px 12px;background:var(--green)" onclick="window.location.href='{% url 'export-profit-excel' %}'">📊 Excel</button>
+          </div>
+        </div>
+        <div class="report-card">
+          <div class="report-icon">👷</div>
+          <div class="report-title">Payroll Report</div>
+          <div class="report-desc">Employee pay slips and payroll summary</div>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn-primary" style="font-size:12px;padding:6px 12px" onclick="window.location.href='{% url 'export-payroll-pdf' %}'">📄 PDF</button>
+            <button class="btn-primary" style="font-size:12px;padding:6px 12px;background:var(--green)" onclick="window.location.href='{% url 'export-payroll-excel' %}'">📊 Excel</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-card" style="margin-bottom:24px">
+        <div class="card-title">Profit Trend — Last 12 Months</div>
+        <div class="card-sub">Net profit after expenses and payroll</div>
+        <div style="height:240px"><canvas id="profitTrendChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="section" id="sec-users">
+      <div class="table-card">
+        <div class="table-header">
+          <div><div class="card-title">User Management</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Admin controls — roles and permissions</div></div>
+          <div class="table-controls">
+            <input type="text" class="search-input" placeholder="🔍  Search users..." oninput="filterTable('users-body',this.value)">
+            <button class="btn-primary" onclick="openModal('modal-user','Add User')">＋ Add User</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>User ID</th><th>Name</th><th>Username</th><th>Role</th><th>Branch</th><th>Last Login</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="users-body">
+            {% for profile in user_profiles %}
+            <tr>
+              <td class="mono" style="color:var(--text3);font-size:12px">USR-{{ profile.user.id|stringformat:'03d' }}</td>
+              <td style="font-weight:600">{{ profile.user.get_full_name|default:profile.user.username }}</td>
+              <td class="mono" style="color:var(--text2)">{{ profile.user.username }}</td>
+              <td><span class="badge {% if profile.role == 'Admin' %}badge-red{% elif profile.role == 'Manager' %}badge-orange{% elif profile.role == 'Cashier' %}badge-blue{% else %}badge-green{% endif %}">{{ profile.role }}</span></td>
+              <td style="font-size:12px;color:var(--text2)">{{ profile.branch }}</td>
+              <td style="font-size:12px;color:var(--text3)">{% if profile.user.last_login %}{{ profile.user.last_login|date:"Y-m-d H:i" }}{% else %}Never{% endif %}</td>
+              <td>{% if profile.is_active %}<span class="badge badge-green">Active</span>{% else %}<span class="badge badge-red">Inactive</span>{% endif %}</td>
+              <td>
+                <div class="action-btns">
+                  <button class="act-btn del" onclick="deleteUser('{{ profile.user.id }}')">🗑 Delete</button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:30px">No users found</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toast-icon">✅</span>
+  <span id="toast-msg">Action completed!</span>
+</div>
+
+<!-- Modals -->
+<!-- Sale Modal -->
+<div class="modal-overlay" id="modal-sale">
+  <div class="modal">
+    <div class="modal-title"><span>⚡</span> <span id="modal-sale-title">Add Fuel Sale</span></div>
+    <div class="modal-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fuel Type</label>
+          <select class="form-select" id="s-fuel">
+            {% for ft in fuel_types %}
+            <option value="{{ ft.name }}">{{ ft.name }} - ₱{{ ft.price_per_liter }}/L</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Liters</label>
+          <input class="form-input" type="number" id="s-liters" placeholder="0.00" step="0.01" oninput="calcTotal()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Price per Liter (₱)</label>
+          <input class="form-input" type="number" id="s-price" placeholder="0.00" step="0.01" oninput="calcTotal()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total Amount (₱)</label>
+          <input class="form-input" type="number" id="s-total" placeholder="Auto-computed" readonly style="background:var(--bg4)">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Cashier</label>
+          <select class="form-select" id="s-cashier">
+            {% for profile in user_profiles %}
+            {% if profile.role == 'Cashier' or profile.role == 'Admin' %}
+            <option value="{{ profile.user.get_full_name|default:profile.user.username }}">{{ profile.user.get_full_name|default:profile.user.username }}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Method</label>
+          <select class="form-select" id="s-payment">
+            <option value="Cash">Cash</option>
+            <option value="GCash">GCash</option>
+            <option value="Card">Card</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="s-status">
+            <option value="Pending">Pending</option>
+            <option value="Paid">Paid</option>
+            <option value="Unsuccessful">Unsuccessful</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <input class="form-input" type="text" id="s-notes" placeholder="Optional notes...">
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-sale')">Cancel</button>
+      <button class="btn-primary" onclick="saveSale()">💾 Save Transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- Expense Modal -->
+<div class="modal-overlay" id="modal-expense">
+  <div class="modal">
+    <div class="modal-title"><span>📋</span> <span id="modal-exp-title">Add Expense</span></div>
+    <div class="modal-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-select" id="e-cat">
+            {% for cat in expense_categories %}
+            <option value="{{ cat.name }}">{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (₱)</label>
+          <input class="form-input" type="number" id="e-amount" placeholder="0.00" step="0.01">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input class="form-input" type="text" id="e-desc" placeholder="Expense description...">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" id="e-date" value="{{ today|date:'Y-m-d' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Approved By</label>
+          <select class="form-select" id="e-approved">
+            <option value="{% if user.is_authenticated %}{{ user.get_full_name|default:user.username }}{% else %}Admin{% endif %}">{% if user.is_authenticated %}{{ user.get_full_name|default:user.username }}{% else %}Admin{% endif %}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-expense')">Cancel</button>
+      <button class="btn-primary" onclick="saveExpense()">💾 Save Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- Employee Modal -->
+<div class="modal-overlay" id="modal-employee">
+  <div class="modal">
+    <div class="modal-title"><span>👷</span> Add Employee</div>
+    <div class="modal-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input class="form-input" type="text" id="emp-fname" placeholder="First name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input class="form-input" type="text" id="emp-lname" placeholder="Last name">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select class="form-select" id="emp-role">
+            <option value="Pump Attendant">Pump Attendant</option>
+            <option value="Cashier">Cashier</option>
+            <option value="Supervisor">Supervisor</option>
+            <option value="Manager">Manager</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Basic Pay (₱)</label>
+          <input class="form-input" type="number" id="emp-pay" placeholder="0.00" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Allowance (₱)</label>
+          <input class="form-input" type="number" id="emp-allow" placeholder="0.00" step="0.01" value="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deductions (₱)</label>
+          <input class="form-input" type="number" id="emp-ded" placeholder="0.00" step="0.01" value="0">
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-employee')">Cancel</button>
+      <button class="btn-primary" onclick="saveEmployee()">💾 Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- User Modal -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal">
+    <div class="modal-title"><span>👤</span> Add User</div>
+    <div class="modal-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input class="form-input" type="text" id="u-fname" placeholder="First name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input class="form-input" type="text" id="u-lname" placeholder="Last name">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input class="form-input" type="text" id="u-username" placeholder="Enter username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" id="u-password" placeholder="Set password">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select class="form-select" id="u-role">
+            <option value="Viewer">Viewer</option>
+            <option value="Cashier">Cashier</option>
+            <option value="Manager">Manager</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Branch</label>
+          <select class="form-select" id="u-branch">
+            <option value="Main - Cebu City">Main - Cebu City</option>
+            <option value="Branch 2 - Mandaue">Branch 2 - Mandaue</option>
+            <option value="Branch 3 - Lapu-Lapu">Branch 3 - Lapu-Lapu</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Permissions</label>
+        <div class="permission-grid">
+          <label class="perm-check"><input type="checkbox" id="perm-view-sales" checked> View Sales</label>
+          <label class="perm-check"><input type="checkbox" id="perm-edit-sales"> Edit Sales</label>
+          <label class="perm-check"><input type="checkbox" id="perm-delete"> Delete Records</label>
+          <label class="perm-check"><input type="checkbox" id="perm-view-reports" checked> View Reports</label>
+          <label class="perm-check"><input type="checkbox" id="perm-export"> Export Reports</label>
+          <label class="perm-check"><input type="checkbox" id="perm-manage-users"> Manage Users</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-user')">Cancel</button>
+      <button class="btn-primary" onclick="saveUser()">💾 Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delivery Modal -->
+<div class="modal-overlay" id="modal-delivery">
+  <div class="modal">
+    <div class="modal-title"><span>🛢</span> Log Fuel Delivery</div>
+    <div class="modal-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fuel Type</label>
+          <select class="form-select" id="d-fuel">
+            {% for ft in fuel_types %}
+            <option value="{{ ft.name }}">{{ ft.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Volume (Liters)</label>
+          <input class="form-input" type="number" id="d-volume" placeholder="0" step="1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Supplier</label>
+          <select class="form-select" id="d-supplier">
+            <option value="Petron Corp.">Petron Corp.</option>
+            <option value="Shell Philippines">Shell Philippines</option>
+            <option value="Phoenix Petroleum">Phoenix Petroleum</option>
+            <option value="Caltex">Caltex</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cost (₱)</label>
+          <input class="form-input" type="number" id="d-cost" placeholder="0.00" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Delivery Date</label>
+          <input class="form-input" type="date" id="d-date" value="{{ today|date:'Y-m-d' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="d-status">
+            <option value="Scheduled">Scheduled</option>
+            <option value="Delivered">Delivered</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-delivery')">Cancel</button>
+      <button class="btn-primary" onclick="saveDelivery()">💾 Log Delivery</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ——— DATA FROM DJANGO ———
+// Parse Django template data into JavaScript
+const djangoData = {
+  fuelTypes: [
+    {% for ft in fuel_types %}
+    { name: "{{ ft.name|escapejs }}", price: {{ ft.price_per_liter|floatformat:2 }}, color: "{{ ft.color }}" },
+    {% endfor %}
+  ],
+  expenseCategories: [
+    {% for cat in expense_categories %}
+    "{{ cat.name|escapejs }}",
+    {% endfor %}
+  ],
+  cashiers: [
+    {% for profile in user_profiles %}
+    {% if profile.role == 'Cashier' or profile.role == 'Admin' %}
+    "{{ profile.user.get_full_name|default:profile.user.username|escapejs }}",
+    {% endif %}
+    {% endfor %}
+  ],
+  suppliers: ["Petron Corp.", "Shell Philippines", "Phoenix Petroleum", "Caltex"],
+  branches: ["Main - Cebu City", "Branch 2 - Mandaue", "Branch 3 - Lapu-Lapu"],
+  today: "{{ today|date:'Y-m-d' }}",
+};
+
+// ——— HELPERS ———  
+function findRow(tbodyId, idText) {
+  const rows = document.querySelectorAll(`#${tbodyId} tr`);
+  return Array.from(rows).find(row => row.cells[0].innerText.trim() === idText);
+}
+
+const peso = n => '₱'+Number(n).toLocaleString('en-PH',{minimumFractionDigits:0,maximumFractionDigits:0});
+const fuelColor = f => {
+  const colors = {
+    'Unleaded 91':'badge-orange','Unleaded 97':'badge-blue',
+    'Diesel':'badge-green','Premium Diesel':'badge-purple'
+  };
+  return colors[f]||'badge-blue';
+};
+
+function statusBadge(s){
+  const m={
+    'Paid':'badge-green','Approved':'badge-green','Active':'badge-green','Delivered':'badge-green',
+    'Pending':'badge-orange','Scheduled':'badge-blue','Inactive':'badge-red','Cancelled':'badge-red','Rejected':'badge-red'
+  };
+  return `<span class="badge ${m[s]||'badge-blue'}">${s}</span>`;
+}
+
+function filterTable(bodyId, q){
+  const rows = document.querySelectorAll(`#${bodyId} tr`);
+  rows.forEach(r => {
+    r.style.display = r.innerText.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function filterByFuel(v){
+  const rows = document.querySelectorAll('#sales-body tr');
+  rows.forEach(r => {
+    if(!v || r.innerText.includes(v)) {
+      r.style.display = '';
+    } else {
+      r.style.display = 'none';
+    }
+  });
+}
+
+// ——— SECTION NAV ———
+function showSection(id, el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  const titles = {dashboard:'Dashboard',sales:'Fuel Sales',expenses:'Expense Management',
+    stock:'Fuel Stock Monitor',payroll:'Employee Payroll',reports:'Report Center',users:'User Management'};
+  document.getElementById('page-title').textContent = titles[id]||id;
+}
+
+// ——— MODALS ———
+function openModal(id,title){
+  document.getElementById(id).classList.add('open');
+  const titleEl = document.getElementById('modal-'+id.split('-')[1]+'-title');
+  if(titleEl) titleEl.textContent = title;
+}
+
+function openDeliveryModal(fuelName){
+  const modal = document.getElementById('modal-delivery');
+  modal.classList.add('open');
+  // Pre-select the correct fuel type
+  const fuelSelect = document.getElementById('d-fuel');
+  for(let i=0; i<fuelSelect.options.length; i++){
+    if(fuelSelect.options[i].value === fuelName){
+      fuelSelect.selectedIndex = i;
+      break;
+    }
+  }
+}
+function closeModal(id){ 
+  document.getElementById(id).classList.remove('open'); 
+}
+window.addEventListener('click', e=>{
+  if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('open');
+});
+
+// ——— CALC ———
+function calcTotal(){
+  const l = parseFloat(document.getElementById('s-liters').value)||0;
+  const p = parseFloat(document.getElementById('s-price').value)||0;
+  document.getElementById('s-total').value = (l*p).toFixed(2);
+}
+
+// ——— CRUD OPERATIONS (AJAX) ———
+function saveSale(){
+  const fuel = document.getElementById('s-fuel').value;
+  const liters = parseFloat(document.getElementById('s-liters').value)||0;
+  const price = parseFloat(document.getElementById('s-price').value)||0;
+  const cashier = document.getElementById('s-cashier').value;
+  const paymentMethod = document.getElementById('s-payment').value;
+  const notes = document.getElementById('s-notes').value;
+  
+  if(!liters||!price){ showToast('Please fill in liters and price','❌',true); return; }
+  
+  fetch('/api/sales/add/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      fuel: fuel,
+      liters: liters,
+      price: price,
+      cashier: cashier,
+      payment_method: paymentMethod,
+      notes: notes
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if(data.success) {
+      showToast('Transaction saved: ' + data.transaction_id, '✅');
+      closeModal('modal-sale');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Error: ' + data.error, '❌', true);
+    }
+  })
+  .catch(error => {
+    showToast('Error saving transaction', '❌', true);
+    console.error('Error:', error);
+  });
+}
+
+function deleteSale(txnId){
+  if(confirm('Are you sure you want to delete transaction '+txnId+'?')){
+    
+    // 1. Instantly remove the row from the UI
+    const row = findRow('sales-body', txnId);
+    if (row) row.remove();
+    showToast('Transaction deleted successfully!', '🗑');
+
+    // 2. Tell the Django backend to delete it in the database
+    fetch('/api/sales/delete/'+txnId+'/', { method: 'POST' })
+    .catch(error => console.error('Backend error:', error));
+  }
+}
+
+function approveSale(txnId){
+  if(confirm('Approve this sale? This will mark it as Paid and deduct fuel stock.')){
+    fetch('/api/sales/approve/'+txnId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Sale approved', '✅');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error approving sale', '❌', true));
+  }
+}
+
+function denySale(txnId){
+  if(confirm('Deny this sale? This will mark it as Unsuccessful.')){
+    fetch('/api/sales/deny/'+txnId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Sale denied', '🗑');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error denying sale', '❌', true));
+  }
+}
+
+function saveExpense(){
+  const cat = document.getElementById('e-cat').value;
+  const amount = parseFloat(document.getElementById('e-amount').value)||0;
+  const desc = document.getElementById('e-desc').value;
+  const date = document.getElementById('e-date').value;
+  const approvedBy = document.getElementById('e-approved').value;
+  
+  if(!amount||!desc){ showToast('Please complete all fields','❌',true); return; }
+  
+  fetch('/api/expenses/add/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      category: cat,
+      amount: amount,
+      description: desc,
+      date: date,
+      approved_by: approvedBy
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if(data.success) {
+      showToast('Expense recorded: ' + data.expense_id, '✅');
+      closeModal('modal-expense');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Error: ' + data.error, '❌', true);
+    }
+  })
+  .catch(error => showToast('Error saving expense', '❌', true));
+}
+
+function deleteExpense(expId){
+  if(confirm('Delete expense '+expId+'?')){
+    fetch('/api/expenses/delete/'+expId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Expense deleted', '🗑');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error deleting expense', '❌', true));
+  }
+}
+
+
+function approveExpense(expId){
+  if(confirm('Approve this expense?')){
+    fetch('/api/expenses/approve/'+expId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Expense approved', '✅');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error approving expense', '❌', true));
+  }
+}
+
+function rejectExpense(expId){
+  if(confirm('Reject this expense?')){
+    fetch('/api/expenses/reject/'+expId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Expense rejected', '🗑');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error rejecting expense', '❌', true));
+  }
+}
+
+function payEmployee(empId){
+  if(confirm('Mark this employee as paid? This will also create an expense record under "Salaries" that will affect the Monthly Expenses and Net Profit.')){
+    fetch('/api/employees/pay/'+empId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Employee paid! Expense record created: ' + data.expense_id, '✅');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error marking employee as paid', '❌', true));
+  }
+}
+
+function saveEmployee(){
+  const fname = document.getElementById('emp-fname').value;
+  const lname = document.getElementById('emp-lname').value;
+  const role = document.getElementById('emp-role').value;
+  const pay = parseFloat(document.getElementById('emp-pay').value)||0;
+  const allow = parseFloat(document.getElementById('emp-allow').value)||0;
+  const ded = parseFloat(document.getElementById('emp-ded').value)||0;
+  
+  if(!fname||!lname||!pay){ showToast('Please fill all employee fields','❌',true); return; }
+  
+  fetch('/api/employees/add/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      first_name: fname,
+      last_name: lname,
+      role: role,
+      basic_pay: pay,
+      allowance: allow,
+      deductions: ded
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if(data.success) {
+      showToast('Employee added: ' + data.employee_id, '✅');
+      closeModal('modal-employee');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Error: ' + data.error, '❌', true);
+    }
+  })
+  .catch(error => showToast('Error saving employee', '❌', true));
+}
+
+function deleteEmployee(empId){
+  if(confirm('Remove employee?')){
+    fetch('/api/employees/delete/'+empId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Employee removed', '🗑');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error deleting employee', '❌', true));
+  }
+}
+
+
+function saveUser(){
+  const fname = document.getElementById('u-fname').value;
+  const lname = document.getElementById('u-lname').value;
+  const username = document.getElementById('u-username').value;
+  const password = document.getElementById('u-password').value;
+  const role = document.getElementById('u-role').value;
+  const branch = document.getElementById('u-branch').value;
+  
+  if(!username||!password){ showToast('Please fill in username and password','❌',true); return; }
+  
+  fetch('/api/users/add/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      first_name: fname,
+      last_name: lname,
+      username: username,
+      password: password,
+      role: role,
+      branch: branch,
+      can_view_sales: document.getElementById('perm-view-sales').checked,
+      can_edit_sales: document.getElementById('perm-edit-sales').checked,
+      can_delete_records: document.getElementById('perm-delete').checked,
+      can_view_reports: document.getElementById('perm-view-reports').checked,
+      can_export_reports: document.getElementById('perm-export').checked,
+      can_manage_users: document.getElementById('perm-manage-users').checked
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if(data.success) {
+      showToast('User created successfully', '✅');
+      closeModal('modal-user');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Error: ' + data.error, '❌', true);
+    }
+  })
+  .catch(error => showToast('Error creating user', '❌', true));
+}
+
+function deleteUser(userId){
+  if(confirm('Delete user?')){
+    fetch('/api/users/delete/'+userId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('User deleted', '🗑');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error deleting user', '❌', true));
+  }
+}
+
+function saveDelivery(){
+  const fuel = document.getElementById('d-fuel').value;
+  const volume = parseInt(document.getElementById('d-volume').value)||0;
+  const supplier = document.getElementById('d-supplier').value;
+  const cost = parseFloat(document.getElementById('d-cost').value)||0;
+  const date = document.getElementById('d-date').value;
+  const status = document.getElementById('d-status').value;
+  
+  if(!volume||!cost){ showToast('Please fill in volume and cost','❌',true); return; }
+  
+  fetch('/api/deliveries/add/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      fuel: fuel,
+      volume: volume,
+      supplier: supplier,
+      cost: cost,
+      date: date,
+      status: status
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if(data.success) {
+      showToast('Delivery logged: ' + data.delivery_id, '✅');
+      closeModal('modal-delivery');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showToast('Error: ' + data.error, '❌', true);
+    }
+  })
+  .catch(error => showToast('Error saving delivery', '❌', true));
+}
+
+function deleteDelivery(delId){
+  if(confirm('Delete delivery log?')){
+    fetch('/api/deliveries/delete/'+delId+'/', { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+      if(data.success) {
+        showToast('Delivery deleted', '🗑');
+        setTimeout(() => location.reload(), 1000);
+      } else {
+        showToast('Error: ' + data.error, '❌', true);
+      }
+    })
+    .catch(error => showToast('Error deleting delivery', '❌', true));
+  }
+}
+
+// ——— TOAST ———
+function showToast(msg, icon='✅', isError=false){
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-icon').textContent = icon;
+  t.classList.toggle('error', isError);
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// ——— LIVE CLOCK ———
+function tick(){
+  const now = new Date();
+  document.getElementById('live-time').textContent = now.toLocaleTimeString('en-PH');
+}
+setInterval(tick, 1000); tick();
+
+// ——— CHARTS ———
+let salesChart, expenseChart, profitChart;
+
+function initCharts(){
+  // Get chart data from Django context (JSON serialized)
+  const monthlyData = JSON.parse('{{ monthly_sales_data_json|safe }}');
+  
+  const expenseData = {
+    labels: JSON.parse('{{ expense_labels_json|safe }}'),
+    values: JSON.parse('{{ expense_breakdown_json|safe }}')
+  };
+
+  const months = monthlyData.map(d => d.month);
+  const revenues = monthlyData.map(d => d.revenue);
+  const expenses = monthlyData.map(d => d.expenses);
+  const profits = monthlyData.map(d => d.profit);
+
+  const opts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#9098b0',font:{family:'IBM Plex Sans',size:11}}}},
+    scales:{
+      x:{ticks:{color:'#5c6478',font:{size:10}},grid:{color:'#1c2028'}},
+      y:{ticks:{color:'#5c6478',font:{size:10},callback:v=>'₱'+v+'K'},grid:{color:'#1c2028'}}
+    }
+  };
+
+  salesChart = new Chart(document.getElementById('salesChart'),{
+    type:'bar',
+    data:{
+      labels:months,
+      datasets:[
+        {label:'Revenue',data:revenues,backgroundColor:'rgba(245,166,35,0.7)',borderRadius:4,borderSkipped:false},
+        {label:'Expenses',data:expenses,backgroundColor:'rgba(232,69,69,0.5)',borderRadius:4,borderSkipped:false},
+        {label:'Profit',data:profits,backgroundColor:'rgba(46,201,126,0.7)',borderRadius:4,borderSkipped:false}
+      ]
+    },
+    options:{...opts}
+  });
+
+  // Expense breakdown chart
+  if(expenseData.labels.length > 0) {
+    expenseChart = new Chart(document.getElementById('expenseChart'),{
+      type:'doughnut',
+      data:{
+        labels:expenseData.labels,
+        datasets:[{
+          data:expenseData.values,
+          backgroundColor:['#f5a623','#4a9eff','#2ec97e','#9b7fe8','#e84545'],
+          borderWidth:0, hoverOffset:6
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom',labels:{color:'#9098b0',font:{size:11},padding:10}}}
+      }
+    });
+  } else {
+    // Show empty state
+    const ctx = document.getElementById('expenseChart').getContext('2d');
+    ctx.fillStyle = '#2e3340';
+    ctx.fillRect(0, 0, 300, 200);
+    ctx.fillStyle = '#5c6478';
+    ctx.font = '14px IBM Plex Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText('No expense data', 150, 100);
+  }
+
+  profitChart = new Chart(document.getElementById('profitTrendChart'),{
+    type:'line',
+    data:{
+      labels:months,
+      datasets:[{
+        label:'Net Profit (₱K)',
+        data:profits,
+        borderColor:'#2ec97e',
+        backgroundColor:'rgba(46,201,126,0.1)',
+        tension:0.4, fill:true, pointRadius:4, pointBackgroundColor:'#2ec97e'
+      }]
+    },
+    options:{...opts}
+  });
+}
+
+// ——— INIT ———
+document.addEventListener('DOMContentLoaded',()=>{
+  initCharts();
+  // Show low stock alert toast on page load if there are low stock items
+  {% if low_stock_items %}
+  setTimeout(() => {
+    const lowStockNames = [{% for item in low_stock_items %}"{{ item.name|escapejs }} ({% widthratio item.current_stock item.tank_capacity 100 %}%)"{% if not forloop.last %}, {% endif %}{% endfor %}];
+    showToast('⚠️ Low Stock Alert: ' + lowStockNames.join(', ') + ' — Check Stock section for details', '🚨', true);
+  }, 1500);
+  {% endif %}
+});
+</script>
+</body>
+</html>
