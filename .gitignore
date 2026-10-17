@@ -1,0 +1,16 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+
+# Fixtures / Data dumps
+datadump.json
+
+# Virtual environment
+venv/
+env/
+ENV/
